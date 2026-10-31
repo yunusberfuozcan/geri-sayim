@@ -1,5 +1,6 @@
 #!/bin/zsh
 # Derler ve ~/Applications/GeriSayim.app olarak kurar.
+# Xcode gerektirmez ama iCloud senkronu olmaz; senkronlu sürüm için README'deki Xcode adımlarına bak.
 set -e
 cd "$(dirname "$0")"
 APP="$HOME/Applications/GeriSayim.app"
@@ -7,7 +8,7 @@ APP="$HOME/Applications/GeriSayim.app"
 pkill -x GeriSayim 2>/dev/null || true
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS"
-swiftc -O -swift-version 5 -o "$APP/Contents/MacOS/GeriSayim" main.swift
+swiftc -O -swift-version 5 -o "$APP/Contents/MacOS/GeriSayim" Mac/main.swift Shared/CountdownStore.swift
 
 cat > "$APP/Contents/Info.plist" <<'EOF'
 <?xml version="1.0" encoding="UTF-8"?>

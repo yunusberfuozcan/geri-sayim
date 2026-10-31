@@ -1,25 +1,16 @@
 import AppKit
 import SwiftUI
 
-let tr = Locale(identifier: "tr_TR")
-
-// MARK: - Ayarlar (UserDefaults'ta saklanır)
+// MARK: - Mac'e özel ayarlar (başlık ve tarih CountdownStore ile senkronlanır)
 
 final class Store: ObservableObject {
     static let shared = Store()
     private let d = UserDefaults.standard
 
-    @Published var title: String { didSet { d.set(title, forKey: "title") } }
-    @Published var target: Date { didSet { d.set(target, forKey: "target") } }
     @Published var showSeconds: Bool { didSet { d.set(showSeconds, forKey: "showSeconds") } }
     @Published var launchAtLogin: Bool { didSet { d.set(launchAtLogin, forKey: "launchAtLogin"); LoginAgent.apply(launchAtLogin) } }
-    let isFirstRun: Bool
 
     init() {
-        isFirstRun = d.object(forKey: "target") == nil
-        title = d.string(forKey: "title") ?? "Önemli Gün"
-        target = d.object(forKey: "target") as? Date
-            ?? Calendar.current.date(byAdding: .day, value: 30, to: Calendar.current.startOfDay(for: Date()))!
         showSeconds = d.object(forKey: "showSeconds") as? Bool ?? true
         launchAtLogin = d.object(forKey: "launchAtLogin") as? Bool ?? false
         if launchAtLogin { LoginAgent.apply(true) }
@@ -51,6 +42,7 @@ enum LoginAgent {
 
 struct CountdownView: View {
     @ObservedObject var store = Store.shared
+    @ObservedObject var countdown = CountdownStore.shared
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1)) { ctx in
@@ -69,9 +61,9 @@ struct CountdownView: View {
 
     @ViewBuilder
     func content(now: Date) -> some View {
-        let total = Int(store.target.timeIntervalSince(now).rounded(.down))
+        let total = Int(countdown.target.timeIntervalSince(now).rounded(.down))
         VStack(spacing: 6) {
-            Text(store.title)
+            Text(countdown.title)
                 .font(.system(size: 15, weight: .semibold, design: .rounded))
                 .lineLimit(2)
                 .multilineTextAlignment(.center)
@@ -93,7 +85,7 @@ struct CountdownView: View {
                     .font(.system(size: 40, weight: .bold, design: .rounded))
                     .padding(.vertical, 8)
             }
-            Text(store.target.formatted(.dateTime.day().month(.wide).year().hour().minute().locale(tr)))
+            Text(countdown.target.formatted(.dateTime.day().month(.wide).year().hour().minute().locale(tr)))
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
         }
@@ -105,11 +97,12 @@ struct CountdownView: View {
 
 struct SettingsView: View {
     @ObservedObject var store = Store.shared
+    @ObservedObject var countdown = CountdownStore.shared
 
     var body: some View {
         Form {
-            TextField("Başlık", text: $store.title)
-            DatePicker("Tarih ve saat", selection: $store.target, displayedComponents: [.date, .hourAndMinute])
+            TextField("Başlık", text: $countdown.title)
+            DatePicker("Tarih ve saat", selection: $countdown.target, displayedComponents: [.date, .hourAndMinute])
             Toggle("Saniyeleri göster", isOn: $store.showSeconds)
             Toggle("Mac açılınca başlat", isOn: $store.launchAtLogin)
             HStack {
@@ -161,7 +154,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(withTitle: "Çıkış", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         statusItem.menu = menu
 
-        if Store.shared.isFirstRun { openSettings() }
+        if CountdownStore.shared.isFirstRun { openSettings() }
     }
 
     @objc func openSettings() {
